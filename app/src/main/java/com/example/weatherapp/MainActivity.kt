@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -34,18 +35,23 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             WeatherAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+
                     Greeting(
                         name = "Android",
-                        modifier = Modifier.padding(innerPadding),
-                        getVideoUri()
+                        modifier = Modifier.padding(),
+                        if(!isSystemInDarkTheme()) getDayVideoUri() else getNightVideoUri()
                     )
-                }
             }
         }
     }
-    fun getVideoUri(): Uri {
-        val rawId = resources.getIdentifier("day", "raw", packageName)
+    private fun getDayVideoUri(): Uri {
+        val rawId = R.raw.day
+        val videoUri = "android.resource://$packageName/$rawId"
+        return Uri.parse(videoUri)
+    }
+
+    private fun getNightVideoUri(): Uri {
+        val rawId = R.raw.night
         val videoUri = "android.resource://$packageName/$rawId"
         return Uri.parse(videoUri)
     }

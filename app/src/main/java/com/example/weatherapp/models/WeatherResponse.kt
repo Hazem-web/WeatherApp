@@ -7,6 +7,7 @@ data class WeatherResponse(
     val weather: List<Weather>,
     val base: String,
     @SerializedName("main") val details: WeatherDetails,
+    val clouds: Clouds,
     val visibility: Int,
     val wind: Wind,
     val dt: Long,
