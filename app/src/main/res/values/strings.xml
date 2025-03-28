@@ -14,4 +14,6 @@
     <string name="wind">wind</string>
     <string name="meter_sec">m/s</string>
     <string name="mile_hour">Mph</string>
+    <string name="today">Today</string>
+    <string name="forecast">Next 5 days</string>
 </resources>
