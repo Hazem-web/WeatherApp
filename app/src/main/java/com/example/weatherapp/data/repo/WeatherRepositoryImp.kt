@@ -14,6 +14,9 @@ class WeatherRepositoryImp(
     private val localDataSource: LocalDataSource,
     private val remoteDataSource: RemoteDataSource
 ): WeatherRepository {
+
+
+
     override suspend fun insertLocation(location: LocationInfo): Long {
         return localDataSource.insertLocation(location)
     }

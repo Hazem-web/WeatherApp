@@ -1,10 +1,9 @@
 package com.example.weatherapp
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,22 +14,26 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -43,39 +46,118 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.weatherapp.data.models.ForecastWeatherResponse
+import com.example.weatherapp.data.models.Results
 import com.example.weatherapp.data.models.Weather
+import com.example.weatherapp.data.models.WeatherDto
 import com.example.weatherapp.data.models.WeatherResponse
 import com.example.weatherapp.ui.theme.TransparentWhite
 import com.example.weatherapp.ui.theme.WeatherAppTheme
+import com.example.weatherapp.viewmodels.HomeViewModel
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-class Screens {
+@Serializable
+sealed class ScreenRoute{
+    @Serializable
+    object HomeScreen:ScreenRoute()
+
+    @Serializable
+    object PlacesScreen:ScreenRoute()
+
+    @Serializable
+    object NotificationScreen:ScreenRoute()
+
+    @Serializable
+    object SettingsScreen:ScreenRoute()
+
+    @Serializable
+    object DetailsScreen:ScreenRoute()
+
+    @Serializable
+    object MapScreen:ScreenRoute()
+}
 
 
-
-
-
-
+    @SuppressLint("CoroutineCreationDuringComposition")
     @Composable
-    fun HomePage(){
-        Scaffold { innerPadding->
+    fun HomePage(
+        viewModel: HomeViewModel,
+        degrees: Degrees,
+        speed: Speed,
+        isNight: Boolean,
+        info: WeatherDto
+    ){
+        viewModel.getAll(info.lat,info.lon,info.lang)
+        val weatherState = viewModel.weather.collectAsState()
+        val forecastState= viewModel.forecast.collectAsState()
+        val scope = rememberCoroutineScope()
+        val snackBarHostState = remember { SnackbarHostState() }
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackBarHostState) },
+            modifier = Modifier.fillMaxWidth().background(color = Color.Transparent),
+            containerColor = Color.Transparent
+        ) { innerPadding->
             Column(
                 modifier = Modifier
                     .padding(innerPadding)
-                    .fillMaxWidth(),
+                    .padding(all = 10.dp)
+                    .fillMaxWidth()
+                    .background(color = Color.Transparent),
                 verticalArrangement = Arrangement.spacedBy(15.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-
+                when(weatherState.value){
+                    is Results.Loading->{
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .width(64.dp)
+                                .height(64.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                    is Results.Success->{
+                        val data=(weatherState.value as Results.Success<WeatherResponse>).data
+                        WeatherDetails(data,degrees,isNight)
+                        WeatherInfo(data,speed)
+                    }
+                    else-> {
+                        scope.launch {
+                            snackBarHostState.showSnackbar(
+                                message = "Error: ${(weatherState.value as Results.Failure).error.message} ",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+                }
+                when(forecastState.value){
+                    is Results.Loading->{
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .width(64.dp)
+                                .height(64.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                    is Results.Success->{
+                        val data=(forecastState.value as Results.Success<ForecastWeatherResponse>).data
+                        ForecastDetails(data,degrees,isNight)
+                    }
+                    else-> {
+                        scope.launch {
+                            snackBarHostState.showSnackbar(
+                                message = "Error: ${(forecastState.value as Results.Failure).error.message} ",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+                }
             }
         }
     }
-
-
-}
 
 @Composable
 fun TemperatureString(
@@ -109,7 +191,10 @@ fun TemperatureString(
     )
 }
 
-fun getIcon(weather: Weather, isNight:Boolean): Int {
+fun getIcon(weather: Weather?, isNight:Boolean): Int {
+    if (weather==null){
+        return R.drawable.sun
+    }
     return when(weather.main){
         WeatherModes.THUNDER.value -> R.drawable.thander
         WeatherModes.CLEAR.value -> if(isNight) R.drawable.moon else R.drawable.sun
@@ -141,15 +226,15 @@ fun getSpeed(value:Double, speed: Speed):Double{
     }
 }
 @Composable
-fun WeatherDetails(weatherResponse: WeatherResponse, degrees: Degrees, isNight: Boolean){
+fun WeatherDetails(weatherResponse: WeatherResponse?, degrees: Degrees, isNight: Boolean){
     val calendar = Calendar.getInstance()
     val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
     Column(
-        modifier = Modifier.padding(horizontal = 20.dp),
+        modifier = Modifier.background(color = Color.Transparent).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        CountryName(weatherResponse.name,weatherResponse.place.country)
+        CountryName(weatherResponse?.name?:"",weatherResponse?.place?.country?:"")
         calendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.LONG, Locale.getDefault())
             ?.let {
                 Text(
@@ -158,66 +243,70 @@ fun WeatherDetails(weatherResponse: WeatherResponse, degrees: Degrees, isNight: 
             }
         Image(
             painter = painterResource(id = getIcon(
-                weatherResponse.weather[0],
+                weatherResponse?.weather?.get(0),
                 isNight
             )),
-            contentDescription = weatherResponse.weather[0].description + stringResource(R.string.icon),
+            contentDescription = (weatherResponse?.weather?.get(0)?.description ?:"") + stringResource(R.string.icon),
             modifier = Modifier
                 .width(138.dp)
                 .height(91.dp),
         )
         TemperatureString(
-            temp = weatherResponse.details.temp,
+            temp = weatherResponse?.details?.temp?:0.00,
             degrees = degrees,
             fontWeight = FontWeight.Bold,
             fontSize = 48.sp
         )
         TemperatureDetails(
-            min = weatherResponse.details.min,
-            max = weatherResponse.details.max,
-            feels = weatherResponse.details.feels,
+            min = weatherResponse?.details?.min?:0.0,
+            max = weatherResponse?.details?.max?:0.0,
+            feels = weatherResponse?.details?.feels?:0.0,
             degrees = degrees
         )
         Text(
-            text = weatherResponse.weather[0].description,
+            text = weatherResponse?.weather?.get(0)?.description?:"",
             textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-fun WeatherInfo(weatherResponse: WeatherResponse, speed: Speed){
-    WeatherAppTheme {
+fun WeatherInfo(weatherResponse: WeatherResponse?, speed: Speed){
         Row(
             modifier = Modifier
+                .background(color = Color.Transparent)
                 .fillMaxWidth(0.9f)
-                .padding(horizontal = 20.dp, vertical = 10.dp)
                 .clip(RoundedCornerShape(5.dp))
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(MaterialTheme.colorScheme.primary,Color.White)
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                           Color.White.copy(alpha = 0.4f)
+                        )
                     )
-                ),
-            horizontalArrangement = Arrangement.SpaceBetween
+                )
+                .padding(horizontal = 5.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             ItemInfo(
                 stringResource(R.string.humidity),
-                "${weatherResponse.details.humidity}%",
+                "${weatherResponse?.details?.humidity ?: ""}%",
                 R.drawable.humidity_icon
             )
             ItemInfo(
                 stringResource(R.string.clouds),
-                "${weatherResponse.clouds.all}%",
+                "${weatherResponse?.clouds?.all ?:""}%",
                 R.drawable.clouds_icon
             )
             ItemInfo(
                 stringResource(R.string.pressure),
-                "${weatherResponse.details.pressure}${stringResource(R.string.hpa)}",
+                "${weatherResponse?.details?.pressure ?:""}\n${stringResource(R.string.hpa)}",
                 R.drawable.pressure_icon
             )
-            WindInfo(weatherResponse.wind.speed, speed)
+            WindInfo(weatherResponse?.wind?.speed ?: 0.0, speed)
         }
-    }
+
 }
 
 @Composable
@@ -228,8 +317,7 @@ fun TemperatureDetails(
     degrees: Degrees
 ){
     Row(
-        modifier = Modifier.width(138.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         TemperatureString(
             temp = min,
@@ -237,7 +325,7 @@ fun TemperatureDetails(
             fontSize = 12.sp,
             fontWeight = FontWeight.Light,
             color = TransparentWhite,
-            text = stringResource(R.string.weather_min)
+            text = stringResource(R.string.weather_min)+":"
         )
         TemperatureString(
             temp = feels,
@@ -245,7 +333,7 @@ fun TemperatureDetails(
             fontSize = 12.sp,
             fontWeight = FontWeight.Light,
             color = TransparentWhite,
-            text = stringResource(R.string.feels_like)
+            text = stringResource(R.string.feels_like)+":"
         )
         TemperatureString(
             temp = max,
@@ -253,7 +341,7 @@ fun TemperatureDetails(
             fontSize = 12.sp,
             fontWeight = FontWeight.Light,
             color = TransparentWhite,
-            text = stringResource(R.string.weather_max)
+            text = stringResource(R.string.weather_max)+":"
         )
     }
 }
@@ -261,15 +349,18 @@ fun TemperatureDetails(
 @Composable
 private fun CountryName(place:String, country:String) {
     Row(
+        modifier = Modifier.background(color = Color.Transparent),
         horizontalArrangement = Arrangement.Center
     ) {
         Text(
             text = "$place,",
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            fontSize = 30.sp
         )
         Text(
             text = country,
-            fontWeight = FontWeight.Normal
+            fontWeight = FontWeight.Normal,
+            fontSize = 30.sp
         )
     }
 }
@@ -277,16 +368,21 @@ private fun CountryName(place:String, country:String) {
 @Composable
 fun ItemInfo(text: String, value: String, icon:Int){
     Row(
+
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        Column() {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Image(
                 painter = painterResource(icon),
                 contentDescription = text + stringResource(R.string.icon),
-                modifier = Modifier.width(24.dp).height(24.dp)
+                modifier = Modifier
+                    .width(24.dp)
+                    .height(24.dp)
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text= text,
                 textAlign = TextAlign.Center,
@@ -311,28 +407,30 @@ fun WindInfo(value: Double, speed: Speed){
             Image(
                 painter = painterResource(R.drawable.wind_icon),
                 contentDescription = stringResource(R.string.wind) + stringResource(R.string.icon),
-                modifier = Modifier.width(24.dp).height(24.dp)
+                modifier = Modifier
+                    .width(24.dp)
+                    .height(24.dp)
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text= stringResource(R.string.wind),
                 textAlign = TextAlign.Center,
                 fontSize = 10.sp,
             )
         }
-        Text(text= "${getSpeed(value,speed)}$speedValue")
+        Text(text= "${String.format("%.2f", getSpeed(value,speed))}\n$speedValue")
     }
 }
 
 @Composable
 fun ForecastItem(date:String, icon: Int, desc:String, degree:String){
-    WeatherAppTheme {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
+                .clip(RoundedCornerShape(7.dp))
                 .background(MaterialTheme.colorScheme.secondary)
-                .padding(horizontal = 5.dp, vertical = 3.dp)
-                .clip(RoundedCornerShape(10.dp)),
+                .padding(horizontal = 10.dp, vertical = 3.dp)
+                ,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
@@ -355,11 +453,11 @@ fun ForecastItem(date:String, icon: Int, desc:String, degree:String){
                 fontWeight = FontWeight.Light
             )
         }
-    }
+
 }
 
 @Composable
-fun ForecastDetails(forecast: ForecastWeatherResponse, degrees: Degrees,isNight: Boolean){
+fun ForecastDetails(forecast: ForecastWeatherResponse?, degrees: Degrees,isNight: Boolean){
     val calendar = Calendar.getInstance()
     calendar.add(Calendar.DAY_OF_YEAR, 1)
     calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -368,7 +466,7 @@ fun ForecastDetails(forecast: ForecastWeatherResponse, degrees: Degrees,isNight:
     calendar.set(Calendar.MILLISECOND, 0)
     val tomorrow=  calendar.time.time
     val forecastListState= remember {
-        val today=forecast.forecastList.filter {
+        val today=forecast?.forecastList?.filter {
             it.dt*1000<tomorrow
         }
         mutableStateOf(today)
@@ -376,7 +474,7 @@ fun ForecastDetails(forecast: ForecastWeatherResponse, degrees: Degrees,isNight:
     val todayWeightState= remember { mutableStateOf(FontWeight.Bold) }
     val daysWeightState= remember { mutableStateOf(FontWeight.Normal) }
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.background(color = Color.Transparent).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
@@ -397,7 +495,7 @@ fun ForecastDetails(forecast: ForecastWeatherResponse, degrees: Degrees,isNight:
                 text = stringResource(R.string.today),
                 fontWeight = todayWeightState.value,
                 modifier = Modifier.clickable {
-                    forecastListState.value=forecast.forecastList.filter {
+                    forecastListState.value=forecast?.forecastList?.filter {
                         it.dt*1000<tomorrow
                     }
                     todayWeightState.value=FontWeight.Bold
@@ -408,9 +506,13 @@ fun ForecastDetails(forecast: ForecastWeatherResponse, degrees: Degrees,isNight:
                 text = stringResource(R.string.forecast),
                 fontWeight = daysWeightState.value,
                 modifier = Modifier.clickable {
-                    forecastListState.value=forecast.forecastList.filter {
-                        it.dt*1000>=tomorrow && (it.dt*1000%129600000)== 0.toLong()
+
+                    forecastListState.value= forecast?.forecastList?.filter {
+                        it.dt*1000>=tomorrow
+                    }?.filterIndexed { index, _ ->
+                         index%8==0
                     }
+                    forecastListState.value
                     todayWeightState.value=FontWeight.Normal
                     daysWeightState.value= FontWeight.Bold
                 }
@@ -421,23 +523,23 @@ fun ForecastDetails(forecast: ForecastWeatherResponse, degrees: Degrees,isNight:
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(vertical = 5.dp)
         ) {
-            items(forecastListState.value.size){
-                val item= forecastListState.value[it]
+            items(forecastListState.value?.size?: 0){
+                val item= forecastListState.value?.get(it)
                 val date=
                 if (daysWeightState.value==FontWeight.Bold){
-                    getDayOfWeekOld(item.dt*1000)
+                    getDayOfWeekOld((item?.dt?:0)*1000)
                 }
                 else{
-                     getTimeOld(item.dt*1000)
+                     getTimeOld((item?.dt?:0)*1000)
                 }
                 ForecastItem(
                     date = date,
                     icon = getIcon(
-                        weather = item.weather[0],
+                        weather = item?.weather?.get(0),
                         isNight
                     ),
-                    desc = item.weather[0].description,
-                    degree = "${getTemp( temp = item.details.temp, degrees = degrees)}°"
+                    desc = item?.weather?.get(0)?.description ?:"",
+                    degree = "${getTemp( temp = item?.details?.temp ?:0.0, degrees = degrees)}°"
                 )
             }
         }
@@ -452,29 +554,6 @@ fun ForecastItemPreview(){
     }
 }
 
-@Composable
-fun BorderedRow() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth(0.9f)
-            .padding(16.dp)
-            .drawBehind {
-                val strokeWidth = 2.dp.toPx() // Border thickness
-                drawLine(
-                    color = Color.Black, // Border color
-                    start = androidx.compose.ui.geometry.Offset(0f, size.height), // Start from left bottom
-                    end = androidx.compose.ui.geometry.Offset(size.width, size.height), // End at right bottom
-                    strokeWidth = strokeWidth
-                )
-            },
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = "Item 1")
-        Text(text = "Item 2")
-        Text(text = "Item 3")
-    }
-}
-
 fun getDayOfWeekOld(millis: Long): String {
     val sdf = SimpleDateFormat("EEE", Locale.getDefault())
     return sdf.format(Date(millis))
@@ -485,8 +564,3 @@ fun getTimeOld(millis: Long): String {
     return sdf.format(Date(millis))
 }
 
-@Preview
-@Composable
-fun PreviewBorderedRow() {
-    BorderedRow()
-}

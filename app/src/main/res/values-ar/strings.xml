@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="weather_min">الصغرى</string>
+    <string name="weather_max">العظمى</string>
+    <string name="feels_like">شعورها مثل</string>
+</resources>
