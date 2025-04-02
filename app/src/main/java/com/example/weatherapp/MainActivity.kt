@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
@@ -101,17 +102,19 @@ class MainActivity : ComponentActivity() {
                 name = getString(R.string.settings)
             )
         )
+        val homeViewModel = ViewModelProvider(
+            this, HomeViewModelFactory(
+                WeatherRepositoryImp(
+                    LocalDataSourceImp.getInstance(this),
+                    RemoteDataSourceImp.getInstance()
+                )
+            )
+        )[HomeViewModel::class.java]
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val homeViewModel = ViewModelProvider(
-                this, HomeViewModelFactory(
-                    WeatherRepositoryImp(
-                        LocalDataSourceImp.getInstance(this),
-                        RemoteDataSourceImp.getInstance()
-                    )
-                )
-            )[HomeViewModel::class.java]
+            orderLocation()
+
             Initialize()
             WeatherAppTheme(darkTheme = isNight.value) {
                 Scaffold(
@@ -121,10 +124,13 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = navHostController,
                         startDestination = ScreenRoute.HomeScreen,
-                        modifier = Modifier.padding(it).fillMaxSize().background(color = Color.Transparent)
+                        modifier = Modifier
+                            .padding(it)
+                            .fillMaxSize()
+                            .background(color = Color.Transparent)
                     ){
                         composable<ScreenRoute.HomeScreen> {
-                            orderLocation()
+
                             HomePage(
                                 homeViewModel,
                                 degrees = degrees.value,
@@ -136,6 +142,13 @@ class MainActivity : ComponentActivity() {
                         composable<ScreenRoute.PlacesScreen> {
                             Text("hi")
                         }
+                        composable<ScreenRoute.NotificationScreen>{
+
+                        }
+                        composable<ScreenRoute.SettingsScreen>{
+
+                        }
+
                     }
                 }
 
@@ -147,7 +160,7 @@ class MainActivity : ComponentActivity() {
     private fun Initialize() {
 
         weatherDto = remember {
-            mutableStateOf(WeatherDto(0.0, 0.0, "en"))
+            mutableStateOf(WeatherDto(0.0, 0.0))
         }
         isNight = rememberSaveable {
             mutableStateOf(true)
@@ -214,6 +227,9 @@ class MainActivity : ComponentActivity() {
                         if (index!=selectedNavigationIndex.intValue) {
                             selectedNavigationIndex.intValue = index
                             navHostController.navigate(item.route)
+                        }
+                        if (selectedNavigationIndex.intValue==0){
+                            orderLocation()
                         }
                     },
                     icon = {
@@ -321,7 +337,7 @@ class MainActivity : ComponentActivity() {
                 override fun onLocationResult(result: LocationResult) {
                     super.onLocationResult(result)
                     val location = result.lastLocation ?: Location("")
-                    weatherDto.value = WeatherDto(location.latitude, location.longitude, weatherDto.value.lang)
+                    weatherDto.value = WeatherDto(location.latitude, location.longitude)
                     fusedProvider.removeLocationUpdates(this)
                 }
             },

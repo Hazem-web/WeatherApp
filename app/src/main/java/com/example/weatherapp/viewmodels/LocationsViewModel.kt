@@ -33,38 +33,38 @@ class LocationsViewModel(private val repository: WeatherRepository): ViewModel()
         }
     }
 
-    fun deleteLocation(locationInfo: LocationInfo, context: Context){
+    fun deleteLocation(locationInfo: LocationInfo){
         viewModelScope.launch(Dispatchers.IO) {
                 try {
                     val number = repository.deleteLocation(locationInfo)
                     if (number == 0) {
-                        mutableMsg.value = context.getString(R.string.not_found)
+                        mutableMsg.value = "no item"
                     }else {
-                        mutableMsg.value= context.getString(R.string.deleted)
+                        mutableMsg.value= "Deleted"
                     }
                 }
                 catch (ex:Exception){
-                    mutableMsg.value = ex.localizedMessage?:context.getString(R.string.not_rec)
+                    mutableMsg.value = ex.localizedMessage?:"no rec"
                 }
             }
 
 
     }
 
-    fun returnLocation(locationInfo: LocationInfo?, context: Context){
+    fun returnLocation(locationInfo: LocationInfo?){
         viewModelScope.launch(Dispatchers.IO) {
             if (locationInfo!=null){
                 try {
                     val number=repository.insertLocation(locationInfo)
                     if (number.toInt() == 1){
-                        mutableMsg.value= context.getString(R.string.returned)
+                        mutableMsg.value= "done"
                     }
                     else{
-                        mutableMsg.value= context.getString(R.string.not_rec)
+                        mutableMsg.value= "no rec"
                     }
                 }
                 catch (ex:Exception){
-                    mutableMsg.value= ex.localizedMessage?:context.getString(R.string.not_rec)
+                    mutableMsg.value= ex.localizedMessage?:"no rec"
                 }
             }
         }

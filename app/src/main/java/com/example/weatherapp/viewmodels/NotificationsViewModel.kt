@@ -63,27 +63,31 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
         }
     }
 
-    fun addNotification(notification: Notification, context: Context){
-        val currentTime=Calendar.getInstance().timeInMillis
-        val setTime=notification.date + notification.time
+    fun addNotification(notification: Notification?, context: Context){
+        if (notification!=null) {
+            val currentTime = Calendar.getInstance().timeInMillis
+            val setTime = notification.date + notification.time
 
-        viewModelScope.launch(Dispatchers.IO){
-            try {
-                val number=repository.insertNotification(notification)
-                if(number.toInt()==1){
-                    mutableMsg.value=context.getString(R.string.added)
-                    withContext(Dispatchers.Main){
-                        if (currentTime<setTime){
-                            scheduleEvent( notification = notification, context = context)
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val number = repository.insertNotification(notification)
+                    if (number.toInt() == 1) {
+                        mutableMsg.value = context.getString(R.string.added)
+                        withContext(Dispatchers.Main) {
+                            if (currentTime < setTime) {
+                                scheduleEvent(notification = notification, context = context)
+                            }
                         }
+                    } else {
+                        mutableMsg.value = context.getString(R.string.not_valid)
                     }
+                } catch (ex: Exception) {
+                    mutableMsg.value = ex.localizedMessage ?: context.getString(R.string.not_rec)
                 }
-                else{
-                    mutableMsg.value=context.getString(R.string.not_valid)
-                }
-            } catch (ex:Exception){
-                mutableMsg.value=ex.localizedMessage?:context.getString(R.string.not_rec)
+
             }
+        }
+        else{
 
         }
     }

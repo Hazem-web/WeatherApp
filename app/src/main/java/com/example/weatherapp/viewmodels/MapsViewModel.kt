@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.weatherapp.data.models.ForecastWeatherResponse
 import com.example.weatherapp.data.models.GeocodingResponse
+import com.example.weatherapp.data.models.LocationInfo
 import com.example.weatherapp.data.models.Results
 import com.example.weatherapp.data.models.WeatherResponse
 import com.example.weatherapp.data.repo.WeatherRepository
@@ -14,27 +15,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class MapsViewModel(private val repository: WeatherRepository):ViewModel() {
-    private val mutableWeather: MutableStateFlow<Results<WeatherResponse>> = MutableStateFlow(Results.Loading)
-    val weather: StateFlow<Results<WeatherResponse>> = mutableWeather
-
     private val mutablePlaces: MutableStateFlow<Results<List<GeocodingResponse>>> = MutableStateFlow(Results.Loading)
     val places: StateFlow<Results<List<GeocodingResponse>>> = mutablePlaces
 
-    fun getLocation(lat:Double, lon:Double, language: String){
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val weather=repository.getWeather(lat,lon,language)
-                if (weather.isSuccessful){
-                    mutableWeather.value=Results.Success(weather.body())
-                }
-                else{
-                    mutableWeather.value=Results.Failure(Exception(weather.errorBody()?.string() ?: "Unknown error"))
-                }
-            }catch (ex:Exception){
-                mutableWeather.value=Results.Failure(ex)
-            }
-        }
-    }
+    private val mutableMsg: MutableStateFlow<String> = MutableStateFlow("Loading")
+    val massage:StateFlow<String> = mutableMsg
 
     fun getPlaces(query:String){
         if (query.isNotBlank()){
@@ -56,7 +41,26 @@ class MapsViewModel(private val repository: WeatherRepository):ViewModel() {
             }
         }
     }
+    fun addLocation(locationInfo: LocationInfo?){
+        viewModelScope.launch(Dispatchers.IO) {
+            if (locationInfo!=null){
+                try {
+                    val number=repository.insertLocation(locationInfo)
+                    if (number.toInt() == 1){
+                        mutableMsg.value= "done"
+                    }
+                    else{
+                        mutableMsg.value= "no rec"
+                    }
+                }
+                catch (ex:Exception){
+                    mutableMsg.value= ex.localizedMessage?:"no rec"
+                }
+            }
+        }
+    }
 }
+
 
 
 class MapsViewModelFactory(private val repository: WeatherRepository): ViewModelProvider.Factory {

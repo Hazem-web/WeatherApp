@@ -7,5 +7,7 @@ data class LocationInfo(
     val long: Double,
     val lat: Double,
     val city:String,
-    val country:String
+    val cityAr:String,
+    val country:String,
+    val countryCode: String
 )
