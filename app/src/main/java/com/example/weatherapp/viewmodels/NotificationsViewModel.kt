@@ -52,7 +52,7 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
                     mutableMsg.value= context.getString(R.string.deleted)
                     withContext(Dispatchers.Main){
                         if (setTime>currentTime){
-                            cancelNotification(context,notification.id)
+                            cancelNotification(context,notification)
                         }
                     }
                 }
@@ -67,14 +67,14 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
         if (notification!=null) {
             val currentTime = Calendar.getInstance().timeInMillis
             val setTime = notification.date + notification.time
-
+            notification.id=0
             viewModelScope.launch(Dispatchers.IO) {
                 try {
+                    if (currentTime < setTime) {
                     val number = repository.insertNotification(notification)
-                    if (number.toInt() == 1) {
+                    if (number.toInt() >= 1) {
                         mutableMsg.value = context.getString(R.string.added)
                         withContext(Dispatchers.Main) {
-                            if (currentTime < setTime) {
                                 scheduleEvent(notification = notification, context = context)
                             }
                         }
@@ -102,7 +102,7 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            notification.id,
+            1,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -116,16 +116,34 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
                     triggerTime,
                     pendingIntent
                 )
+            else {
+                alarmManager.set(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerTime,
+                    pendingIntent
+                )
+            }
         }
+        else{
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        }
+
     }
 
-    private fun cancelNotification(context: Context, notificationId: Int) {
+    private fun cancelNotification(context: Context, notification: Notification) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(context, NotificationReceiver::class.java)
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            putExtra("ID", notification.id)
+            putExtra("TYPE", notification.type.ordinal)
+        }
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            notificationId,
+            1,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">WeatherApp</string>
+    <string name="app_name">4 Cast</string>
     <string name="weather_min">Min</string>
     <string name="weather_max">Max</string>
     <string name="feels_like">feels like</string>

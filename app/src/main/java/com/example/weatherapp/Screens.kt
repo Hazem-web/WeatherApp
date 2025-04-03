@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonColors
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -92,6 +93,7 @@ import com.example.weatherapp.ui.theme.DarkBlue
 import com.example.weatherapp.ui.theme.TransparentWhite
 import com.example.weatherapp.ui.theme.WeatherAppTheme
 import com.example.weatherapp.viewmodels.DetailsViewModel
+import com.example.weatherapp.viewmodels.HomeMapViewModel
 import com.example.weatherapp.viewmodels.HomeViewModel
 import com.example.weatherapp.viewmodels.LocationsViewModel
 import com.example.weatherapp.viewmodels.MapsViewModel
@@ -106,6 +108,7 @@ import com.vanpra.composematerialdialogs.MaterialDialog
 import com.vanpra.composematerialdialogs.datetime.date.datepicker
 import com.vanpra.composematerialdialogs.datetime.time.timepicker
 import com.vanpra.composematerialdialogs.rememberMaterialDialogState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -134,10 +137,13 @@ sealed class ScreenRoute{
     object SettingsScreen:ScreenRoute()
 
     @Serializable
-    object DetailsScreen:ScreenRoute()
+    data class DetailsScreen(val lat:Double,val lon:Double):ScreenRoute()
 
     @Serializable
     object MapScreen:ScreenRoute()
+
+    @Serializable
+    object HomeMapScreen:ScreenRoute()
 }
 
 
@@ -158,13 +164,14 @@ fun HomePage(
     val unknownError=stringResource(R.string.not_rec)
     val error= stringResource(R.string.error)
     Scaffold(
-        snackbarHost = { SnackbarHost(snackBarHostState) },
+        snackbarHost = { SnackbarHost(snackBarHostState){
+            Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
+        } },
         modifier = Modifier
             .fillMaxWidth()
             .background(color = Color.Transparent),
         containerColor = Color.Transparent
     ) { innerPadding->
-
         Column(
             modifier = Modifier
                 .padding(innerPadding)
@@ -241,7 +248,9 @@ fun DetailsPage(
     val unknownError=stringResource(R.string.not_rec)
     val error= stringResource(R.string.error)
     Scaffold(
-        snackbarHost = { SnackbarHost(snackBarHostState) },
+        snackbarHost = { SnackbarHost(snackBarHostState){
+            Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
+        } },
         modifier = Modifier
             .fillMaxWidth()
             .background(color = Color.Transparent),
@@ -331,7 +340,9 @@ fun LocationsPage(locationsViewModel: LocationsViewModel, toDetails:(WeatherDto)
     val currentRemoved= remember { mutableStateOf<LocationInfo?>(null) }
     val error= stringResource(R.string.error)
     Scaffold(
-        snackbarHost = { SnackbarHost(snackBarHostState) },
+        snackbarHost = { SnackbarHost(snackBarHostState, ){
+            Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
+        } },
         modifier = Modifier
             .fillMaxWidth()
             .background(color = Color.Transparent),
@@ -348,7 +359,7 @@ fun LocationsPage(locationsViewModel: LocationsViewModel, toDetails:(WeatherDto)
                 val undo= stringResource(R.string.undo)
                 val string=stringResource(R.string.deleted)
                 scope.launch {
-                  val action= snackBarHostState.showSnackbar("$error: $string",undo,)
+                  val action= snackBarHostState.showSnackbar(string,undo,)
                     when(action){
                         SnackbarResult.ActionPerformed ->{
                             locationsViewModel.returnLocation(currentRemoved.value)
@@ -362,7 +373,7 @@ fun LocationsPage(locationsViewModel: LocationsViewModel, toDetails:(WeatherDto)
             Constants.DONE.value->{
                 val string=stringResource(R.string.returned)
                 scope.launch {
-                    snackBarHostState.showSnackbar("$error: $string",)
+                    snackBarHostState.showSnackbar(string,)
                 }
             }
             Constants.NOT_REC.value->{
@@ -381,7 +392,7 @@ fun LocationsPage(locationsViewModel: LocationsViewModel, toDetails:(WeatherDto)
             }
             else->{
                 scope.launch {
-                    snackBarHostState.showSnackbar("$error: ${msgState.value}",)
+                    snackBarHostState.showSnackbar(msgState.value,)
                 }
             }
         }
@@ -454,13 +465,15 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
     val error= stringResource(R.string.error)
     var showDialog by remember { mutableStateOf(false) }
     Scaffold(
-        snackbarHost = { SnackbarHost(snackBarHostState) },
+        snackbarHost = { SnackbarHost(snackBarHostState, snackbar = {
+            Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
+        }) },
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .background(color = Color.Transparent),
         containerColor = Color.Transparent,
         floatingActionButton = {
-            LocationFloatingActionButton {
+            NotificationFloatingActionButton {
                 showDialog=true
             }
         },
@@ -477,7 +490,7 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
             stringResource(R.string.deleted) ->{
                 val undo= stringResource(R.string.undo)
                 scope.launch {
-                    val action= snackBarHostState.showSnackbar("$error: ${msgState.value}",undo,)
+                    val action= snackBarHostState.showSnackbar("$error: ${msgState.value}",undo, duration = SnackbarDuration.Short)
                     when(action){
                         SnackbarResult.ActionPerformed ->{
                             notificationsViewModel.addNotification(currentRemoved.value,context)
@@ -493,7 +506,7 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
             }
             else->{
                 scope.launch {
-                    snackBarHostState.showSnackbar("$error: ${msgState.value}",)
+                    snackBarHostState.showSnackbar("$error: ${msgState.value}", duration = SnackbarDuration.Short)
                 }
             }
         }
@@ -574,11 +587,12 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
         }
 
     }
-
     Scaffold(
-        snackbarHost = { SnackbarHost(snackBarHostState) },
+        snackbarHost = { SnackbarHost(snackBarHostState, snackbar = {
+            Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
+        }) },
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxSize(),
         floatingActionButton = {
             MapsFloatingActionButton(
                 isClickable = current.value!=null
@@ -590,21 +604,23 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
                 else{
 
                     scope.launch {
-                        snackBarHostState.showSnackbar(text)
+                        snackBarHostState.showSnackbar(text, duration = SnackbarDuration.Short)
                     }
                 }
             }
         },
-        floatingActionButtonPosition = FabPosition.End){innerPadding->
+        floatingActionButtonPosition = FabPosition.End,){innerPadding->
         GoogleMap(
             modifier = Modifier.padding(innerPadding).fillMaxSize(),
             cameraPositionState = cameraPositionState,
             onMapClick = {
                 markerState.position=it
-                val list=geocoderAr.getFromLocation(it.latitude,it.longitude,1)?: listOf()
-                val list2=geocoderEn.getFromLocation(it.latitude,it.longitude,1)?: listOf()
-                if (list.isNotEmpty() &&list2.isNotEmpty()){
-                    current.value= LocationInfo(it.longitude,it.latitude, list2[0].getAddressLine(1),list[0].getAddressLine(1),list2[0].countryName,list2[0].countryCode)
+                scope.launch(Dispatchers.IO) {
+                    val list=geocoderAr.getFromLocation(it.latitude,it.longitude,1)?: listOf()
+                    val list2=geocoderEn.getFromLocation(it.latitude,it.longitude,1)?: listOf()
+                    if (list.isNotEmpty() &&list2.isNotEmpty()){
+                        current.value= LocationInfo(it.longitude,it.latitude, list2[0].getAddressLine(0),list[0].getAddressLine(0),list2[0].countryName,list2[0].countryCode)
+                    }
                 }
             }
         ) {
@@ -628,16 +644,19 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
                 },
                 )
             LazyColumn(
-                modifier = Modifier.background(color = Color.White).fillMaxWidth()
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 items(locations.value){
-                    Text(text=if (Locale.getDefault().language=="en"){it.localNames.english+", "+it.country} else{it.localNames.arabic+", "+it.country},
+                    Text(text=if (Locale.getDefault().language=="en"){(it.localNames?.english?:it.name)+", "+it.country} else{(it.localNames?.arabic?:it.name)+", "+it.country},
                         modifier = Modifier
+                            .background(Color.Black)
                             .fillMaxWidth()
                             .clickable {
-                                current.value=LocationInfo(it.longitude,it.latitude,it.localNames.english?:"",it.localNames.arabic?:"",it.country,it.country)
+                                current.value=LocationInfo(it.longitude,it.latitude,it.localNames?.english?:it.name,it.localNames?.arabic?:it.name,it.country,it.country)
                                 markerState.position= LatLng(it.latitude,it.longitude)
                                 locations.value= listOf()
+                                searchText.value=""
                             },
                         color = Color.Black)
                 }
@@ -648,6 +667,113 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
     }
 }
 
+@Composable
+fun HomeMapPage(homeMapViewModel: HomeMapViewModel, saveLocation:(LocationInfo)->Unit){
+    val scope = rememberCoroutineScope()
+    val snackBarHostState = remember { SnackbarHostState() }
+    val context= LocalContext.current
+    val place = LatLng(0.0, 0.0)
+    val markerState = rememberMarkerState(position = place)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(place, 10f)
+    }
+    val searchText= remember { mutableStateOf("") }
+    val placesState=homeMapViewModel.places.collectAsState()
+    val locations= remember { mutableStateOf(listOf<GeocodingResponse>()) }
+    val current= remember { mutableStateOf<LocationInfo?>(null) }
+    val geocoderAr= Geocoder(context,Locale("ar"))
+    val geocoderEn= Geocoder(context,Locale("en"))
+    val text= stringResource(R.string.error)+": " + stringResource(R.string.select_valid)
+    when (placesState.value ){
+        is Results.Success->{
+            locations.value= (placesState.value as Results.Success<List<GeocodingResponse>>).data?: listOf<GeocodingResponse>()
+        }
+        else->{
+
+        }
+
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackBarHostState){
+            Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
+        } },
+        modifier = Modifier
+            .fillMaxSize(),
+        floatingActionButton = {
+            MapsFloatingActionButton(
+                isClickable = current.value!=null
+            ) {
+                if (current.value!=null){
+                    saveLocation(current.value!!)
+                }
+                else{
+
+                    scope.launch {
+                        snackBarHostState.showSnackbar(text, duration = SnackbarDuration.Short)
+                    }
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End){innerPadding->
+        GoogleMap(
+            modifier = Modifier.padding(innerPadding).fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            onMapClick = {
+                markerState.position=it
+                val list=geocoderAr.getFromLocation(it.latitude,it.longitude,1)?: listOf()
+                val list2=geocoderEn.getFromLocation(it.latitude,it.longitude,1)?: listOf()
+                if (list.isNotEmpty() &&list2.isNotEmpty()){
+                    current.value= LocationInfo(it.longitude,it.latitude, list2[0].getAddressLine(0),list[0].getAddressLine(0),list2[0].countryName,list2[0].countryCode)
+                }
+            }
+        ) {
+            Marker(
+                state = markerState,
+            )
+        }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(innerPadding).fillMaxWidth(0.9f)
+        ) {
+            TextField(
+                value = searchText.value,
+                onValueChange = {
+                    searchText.value=it
+                    if(it.isNotBlank())
+                        homeMapViewModel.getPlaces(it)
+                    else{
+                        locations.value= listOf()
+                    }
+                },
+                placeholder = {
+                    Text(stringResource(R.string.search))
+                },
+            )
+            LazyColumn(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(locations.value){
+                    Text(text=if (Locale.getDefault().language=="en"){(it.localNames?.english?:it.name)+", "+it.country} else{(it.localNames?.arabic?:it.name)+", "+it.country},
+                        modifier = Modifier
+                            .background(Color.Black)
+                            .fillMaxWidth()
+                            .clickable {
+                                current.value=LocationInfo(it.longitude,it.latitude,it.localNames?.english?:it.name,it.localNames?.arabic?:it.name,it.country,it.country)
+                                markerState.position= LatLng(it.latitude,it.longitude)
+                                locations.value= listOf()
+                                searchText.value=""
+                                cameraPositionState.position=CameraPosition.fromLatLngZoom(markerState.position, 10f)
+                            },
+                        color = Color.Black)
+                }
+            }
+
+        }
+
+    }
+}
 
 @Composable
 fun SettingsPage(
@@ -675,15 +801,23 @@ fun SettingsPage(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues = innerPaddingValues)
-            .padding(10.dp)
-            .verticalScroll(scrollState)
+            .padding(horizontal =10.dp,)
+            .verticalScroll(scrollState),
     ) {
+        Spacer(Modifier.height(10.dp))
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.background(color = MaterialTheme.colorScheme.secondary)
+            modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .padding(5.dp)
+                .background(brush = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    Color.White.copy(alpha = 0.4f)
+                )
+            ))
                 .fillMaxWidth()
+                .padding(5.dp)
+
         ) {
             Text(stringResource(R.string.mode), fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Row(
@@ -734,8 +868,14 @@ fun SettingsPage(
         }
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.background(color = MaterialTheme.colorScheme.secondary)
+            modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
+                .background(brush = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    Color.White.copy(alpha = 0.4f)
+                )
+            ))
                 .padding(5.dp)
                 .fillMaxWidth()
         ) {
@@ -810,8 +950,14 @@ fun SettingsPage(
         }
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.background(color = MaterialTheme.colorScheme.secondary)
+            modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
+                .background(brush = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    Color.White.copy(alpha = 0.4f)
+                )
+            ))
                 .padding(5.dp)
                 .fillMaxWidth()
         ) {
@@ -863,8 +1009,14 @@ fun SettingsPage(
         }
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.background(color = MaterialTheme.colorScheme.secondary)
+            modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
+                .background(brush = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    Color.White.copy(alpha = 0.4f)
+                )
+            ))
                 .padding(5.dp)
                 .fillMaxWidth()
         ) {
@@ -916,8 +1068,14 @@ fun SettingsPage(
         }
         Column(
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.background(color = MaterialTheme.colorScheme.secondary)
+            modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
+                .background(brush = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    Color.White.copy(alpha = 0.4f)
+                )
+            ))
                 .padding(5.dp)
                 .fillMaxWidth()
         ) {
@@ -967,6 +1125,7 @@ fun SettingsPage(
                 Text(text = stringResource(R.string.english))
             }
         }
+        Spacer(Modifier.height(10.dp))
 
     }
 }
@@ -974,6 +1133,18 @@ fun SettingsPage(
 
 @Composable
 fun LocationFloatingActionButton(onClick:  () -> Unit) {
+
+    FloatingActionButton(
+        onClick = onClick,
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = Color.White
+    ) {
+        Icon(painter = painterResource(R.drawable.location_add), contentDescription = stringResource(R.string.notify_add))
+    }
+}
+
+@Composable
+fun NotificationFloatingActionButton(onClick:  () -> Unit) {
 
     FloatingActionButton(
         onClick = onClick,
@@ -1074,9 +1245,9 @@ fun CustomDateTimePickerDialog(
                             disabledUnselectedColor = Color.Black
                         )
                     )
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(3.dp))
                     Text(text = stringResource(R.string.notify))
-                    Spacer(Modifier.width(20.dp))
+                    Spacer(Modifier.width(10.dp))
                     RadioButton(
                         selected = (selectedType==NotificationType.ALARM),
                         onClick = {
@@ -1089,7 +1260,7 @@ fun CustomDateTimePickerDialog(
                             disabledUnselectedColor = Color.Black
                         )
                     )
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(3.dp))
                     Text(text = stringResource(R.string.alarm))
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1140,7 +1311,7 @@ fun CustomDateTimePickerDialog(
                 title = stringResource(R.string.pick_time),
 
             ){
-                selectedTime= (it.toNanoOfDay()/1000000)
+                selectedTime= (it.toNanoOfDay()/1000000)-(2*60*60*1000)
             }
         }
     }
@@ -1461,6 +1632,11 @@ fun ForecastDetails(forecast: ForecastWeatherResponse?, degrees: Degrees,isNight
             it.dt*1000<tomorrow
         }
         mutableStateOf(today)
+    }
+    if ((forecast?.forecastList?.contains(forecastListState.value?.get(0))?:true)==false){
+        forecastListState.value=forecast?.forecastList?.filter {
+            it.dt*1000<tomorrow
+        }
     }
     val todayWeightState= remember { mutableStateOf(FontWeight.Bold) }
     val daysWeightState= remember { mutableStateOf(FontWeight.Normal) }

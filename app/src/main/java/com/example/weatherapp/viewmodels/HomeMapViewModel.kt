@@ -14,12 +14,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class MapsViewModel(private val repository: WeatherRepository):ViewModel() {
+class HomeMapViewModel(private val repository: WeatherRepository):ViewModel() {
     private val mutablePlaces: MutableStateFlow<Results<List<GeocodingResponse>>> = MutableStateFlow(Results.Loading)
     val places: StateFlow<Results<List<GeocodingResponse>>> = mutablePlaces
-
-    private val mutableMsg: MutableStateFlow<String> = MutableStateFlow("Loading")
-    val massage:StateFlow<String> = mutableMsg
 
     fun getPlaces(query:String){
         if (query.isNotBlank()){
@@ -41,30 +38,13 @@ class MapsViewModel(private val repository: WeatherRepository):ViewModel() {
             }
         }
     }
-    fun addLocation(locationInfo: LocationInfo?){
-        viewModelScope.launch(Dispatchers.IO) {
-            if (locationInfo!=null){
-                try {
-                    val number=repository.insertLocation(locationInfo)
-                    if (number.toInt() >= 1){
-                        mutableMsg.value= "done"
-                    }
-                    else{
-                        mutableMsg.value= "no rec"
-                    }
-                }
-                catch (ex:Exception){
-                    mutableMsg.value= ex.localizedMessage?:"no rec"
-                }
-            }
-        }
-    }
+
 }
 
 
 
-class MapsViewModelFactory(private val repository: WeatherRepository): ViewModelProvider.Factory {
+class HomeMapViewModelFactory(private val repository: WeatherRepository): ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return MapsViewModel(repository) as T
+        return HomeMapViewModel(repository) as T
     }
 }

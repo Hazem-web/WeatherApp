@@ -56,7 +56,7 @@ class LocationsViewModel(private val repository: WeatherRepository): ViewModel()
             if (locationInfo!=null){
                 try {
                     val number=repository.insertLocation(locationInfo)
-                    if (number.toInt() == 1){
+                    if (number.toInt() >= 1){
                         mutableMsg.value= "done"
                     }
                     else{
