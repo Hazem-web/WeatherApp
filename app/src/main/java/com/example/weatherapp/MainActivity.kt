@@ -2,7 +2,6 @@ package com.example.weatherapp
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.ComponentCaller
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,7 +11,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
 import android.provider.Settings
-import android.util.Log
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
@@ -20,10 +18,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -39,15 +42,19 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.app.ActivityCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -83,7 +90,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import org.intellij.lang.annotations.Language
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 const val REQUEST_LOCATION_CODE=1003
@@ -91,23 +98,26 @@ const val REQUEST_LOCATION_CODE=1003
 class MainActivity : ComponentActivity() {
     lateinit var fusedProvider: FusedLocationProviderClient
     lateinit var weatherDto: MutableState<WeatherDto>
-    lateinit var isNight: MutableState<Boolean>
-    lateinit var speed: MutableState<Speed>
-    lateinit var degrees: MutableState<Degrees>
-    lateinit var language: MutableState<String>
-    lateinit var mode: MutableState<String>
-    lateinit var selectedNavigationIndex:MutableIntState
-    var exoPlayer:ExoPlayer?=null
-    var navigationItems = listOf<BottomNavItem>()
-    lateinit var navHostController:NavHostController
-    var savedTheme:String?=null
-    var savedSpeed: Speed=Speed.METER
-    var savedLanguage:String=Locale.getDefault().language
-    var savedDegrees:Degrees=Degrees.CELSIUS
-    var savedMode:String=Constants.LOCATION.value
-    var savedLat:Float=0f
-    var savedLan:Float=0f
+    private lateinit var isNight: MutableState<Boolean>
+    private lateinit var speed: MutableState<Speed>
+    private lateinit var degrees: MutableState<Degrees>
+    private lateinit var language: MutableState<String>
+    private lateinit var mode: MutableState<String>
+    private lateinit var selectedNavigationIndex:MutableIntState
+    private var exoPlayer:ExoPlayer?=null
+    private var navigationItems = listOf<BottomNavItem>()
+    private lateinit var navHostController:NavHostController
+    private var savedTheme:String?=null
+    private var savedSpeed: Speed=Speed.METER
+    private var savedLanguage:String=Locale.getDefault().language
+    private var savedDegrees:Degrees=Degrees.CELSIUS
+    private var savedMode:String=Constants.LOCATION.value
+    private var savedLat:Float=0f
+    private var savedLan:Float=0f
+    private var isConnected=true
     override fun onCreate(savedInstanceState: Bundle?) {
+        val networkObserver = NetworkConnectivityObserver(applicationContext)
+        isConnected=networkObserver.currentStatus()
         super.onCreate(savedInstanceState)
         navigationItems= listOf(
             BottomNavItem(
@@ -180,6 +190,17 @@ class MainActivity : ComponentActivity() {
             )
         )[MapsViewModel::class.java]
         getSaved()
+        lifecycleScope.launch {
+            networkObserver.observeNetworkStatus().collect{
+
+                if (it && !isConnected) {
+
+                    navHostController.navigate(resId = navHostController.currentDestination?.id?:0)
+                    navHostController.popBackStack()
+                }
+                isConnected=it
+            }
+        }
         enableEdgeToEdge()
         installSplashScreen()
         setContent {
@@ -201,13 +222,24 @@ class MainActivity : ComponentActivity() {
                     ){
                         composable<ScreenRoute.HomeScreen> {
                             selectedNavigationIndex.intValue=0
-                            HomePage(
-                                homeViewModel,
-                                degrees = degrees.value,
-                                speed = speed.value,
-                                isNight = isNight.value,
-                                info = weatherDto.value,
-                            )
+                            if (!isConnected){
+                                Column(
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(text = stringResource(R.string.no_internet), fontSize = 30.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                }
+                            }
+                            else{
+                                HomePage(
+                                    homeViewModel,
+                                    degrees = degrees.value,
+                                    speed = speed.value,
+                                    isNight = isNight.value,
+                                    info = weatherDto.value,
+                                )
+                            }
+
                         }
                         composable<ScreenRoute.PlacesScreen> {
                             selectedNavigationIndex.intValue=1
@@ -223,9 +255,41 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable<ScreenRoute.DetailsScreen> {backStackEntry->
-                            val value = backStackEntry.toRoute<ScreenRoute.DetailsScreen>()
-                            DetailsPage(viewModel = detailsViewModel, degrees = degrees.value, speed = speed.value, isNight = isNight.value, info = WeatherDto(value.lat,value.lon)) {
-                                navHostController.popBackStack()
+                            if (!isConnected){
+                                Column(){
+                                    Row(
+                                        horizontalArrangement = Arrangement.Absolute.Left
+                                    ){
+                                        Icon(
+                                            painterResource(R.drawable.arrow_back),
+                                            contentDescription = stringResource(R.string.back),
+                                            modifier = Modifier
+                                                .size(30.dp)
+                                                .clickable {
+                                                    navHostController.popBackStack()
+                                                },
+                                            tint = Color.White
+                                        )
+                                    }
+                                    Column(
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(text = stringResource(R.string.no_internet), fontSize = 30.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                    }
+                                }
+                            }
+                            else {
+                                val value = backStackEntry.toRoute<ScreenRoute.DetailsScreen>()
+                                DetailsPage(
+                                    viewModel = detailsViewModel,
+                                    degrees = degrees.value,
+                                    speed = speed.value,
+                                    isNight = isNight.value,
+                                    info = WeatherDto(value.lat, value.lon)
+                                ) {
+                                    navHostController.popBackStack()
+                                }
                             }
                         }
                         composable<ScreenRoute.NotificationScreen>{
@@ -276,6 +340,8 @@ class MainActivity : ComponentActivity() {
                                     mode.value=it
                                     editor.putString(Constants.MODE.value,it)
                                     if(mode.value==Constants.MAP.value){
+                                        editor.putFloat(Constants.LAT.value,weatherDto.value.lat.toFloat())
+                                        editor.putFloat(Constants.LAN.value,weatherDto.value.lon.toFloat())
                                         editor.apply()
                                         navHostController.navigate(ScreenRoute.HomeMapScreen)
                                     }

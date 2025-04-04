@@ -59,4 +59,5 @@
     <string name="pick_date">اختر تاريخ</string>
     <string name="pick_time">اختر وقت</string>
     <string name="pick_noti_type">اختر نوع الاشعار</string>
+    <string name="no_internet">لا يوجد اتصال بالانترنت</string>
 </resources>

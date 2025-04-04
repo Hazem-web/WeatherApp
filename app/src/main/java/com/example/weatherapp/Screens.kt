@@ -2,8 +2,6 @@ package com.example.weatherapp
 
 import android.annotation.SuppressLint
 import android.location.Geocoder
-import android.widget.DatePicker
-import android.widget.TimePicker
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,9 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.magnifier
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -48,7 +44,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,11 +65,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
@@ -84,14 +77,12 @@ import com.example.weatherapp.data.models.GeocodingResponse
 import com.example.weatherapp.data.models.LocationInfo
 import com.example.weatherapp.data.models.Notification
 import com.example.weatherapp.data.models.NotificationType
-import com.example.weatherapp.data.models.PlaceInfo
 import com.example.weatherapp.data.models.Results
 import com.example.weatherapp.data.models.Weather
 import com.example.weatherapp.data.models.WeatherDto
 import com.example.weatherapp.data.models.WeatherResponse
 import com.example.weatherapp.ui.theme.DarkBlue
 import com.example.weatherapp.ui.theme.TransparentWhite
-import com.example.weatherapp.ui.theme.WeatherAppTheme
 import com.example.weatherapp.viewmodels.DetailsViewModel
 import com.example.weatherapp.viewmodels.HomeMapViewModel
 import com.example.weatherapp.viewmodels.HomeViewModel
@@ -109,14 +100,10 @@ import com.vanpra.composematerialdialogs.datetime.date.datepicker
 import com.vanpra.composematerialdialogs.datetime.time.timepicker
 import com.vanpra.composematerialdialogs.rememberMaterialDialogState
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import org.intellij.lang.annotations.Language
 import java.text.SimpleDateFormat
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Calendar
 import java.util.Date
@@ -287,7 +274,8 @@ fun DetailsPage(
                                 .size(30.dp)
                                 .clickable {
                                     back()
-                                }
+                                },
+                            tint = Color.White
                             )
                     }
                     WeatherDetails(data,degrees,isNight)
@@ -480,18 +468,12 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
         },
         floatingActionButtonPosition = FabPosition.End
     ){ innerPadding->
-        if (showDialog==true) {
-            CustomDateTimePickerDialog(
-                onDismiss = { showDialog = false },
-                onDateTimeSelected = { date, time, type -> notificationsViewModel.addNotification(Notification(time=time, date = date, type = type),context) }
-            )
-        }
-
         when(msgState.value){
-            stringResource(R.string.deleted) ->{
+            Constants.DELETED.value->{
                 val undo= stringResource(R.string.undo)
+                val string=stringResource(R.string.deleted)
                 scope.launch {
-                    val action= snackBarHostState.showSnackbar("$error: ${msgState.value}",undo, duration = SnackbarDuration.Short)
+                    val action= snackBarHostState.showSnackbar(string,undo,)
                     when(action){
                         SnackbarResult.ActionPerformed ->{
                             notificationsViewModel.addNotification(currentRemoved.value,context)
@@ -502,12 +484,29 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
                     }
                 }
             }
+            Constants.DONE.value->{
+                val string=stringResource(R.string.returned)
+                scope.launch {
+                    snackBarHostState.showSnackbar(string,)
+                }
+            }
+            Constants.NOT_REC.value->{
+                scope.launch {
+                    snackBarHostState.showSnackbar("$error: $unknownError",)
+                }
+            }
+            Constants.NO_ITEM.value->{
+                val string=stringResource(R.string.not_found)
+                scope.launch {
+                    snackBarHostState.showSnackbar("$error: $string",)
+                }
+            }
             Constants.LOADING.value->{
 
             }
             else->{
                 scope.launch {
-                    snackBarHostState.showSnackbar("$error: ${msgState.value}", duration = SnackbarDuration.Short)
+                    snackBarHostState.showSnackbar(msgState.value,)
                 }
             }
         }
@@ -558,6 +557,12 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
                     )
                 }
             }
+        }
+        if (showDialog) {
+            CustomDateTimePickerDialog(
+                onDismiss = { showDialog = false },
+                onDateTimeSelected = { date, time, type -> notificationsViewModel.addNotification(Notification(time=time, date = date, type = type),context) }
+            )
         }
     }
 
@@ -611,7 +616,7 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
                 }
             }
         },
-        floatingActionButtonPosition = FabPosition.End,){innerPadding->
+        floatingActionButtonPosition = FabPosition.Start,){innerPadding->
         GoogleMap(
             modifier = Modifier.padding(innerPadding).fillMaxSize(),
             cameraPositionState = cameraPositionState,
@@ -640,10 +645,14 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
                     searchText.value=it
                     if(it.isNotBlank())
                         mapsViewModel.getPlaces(it)
+                    else
+                        locations.value= listOf()
                 },
                 placeholder = {
                     Text(stringResource(R.string.search))
                 },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(0.8f)
                 )
             LazyColumn(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -653,7 +662,8 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
                     Text(text=if (Locale.getDefault().language=="en"){(it.localNames?.english?:it.name)+", "+it.country} else{(it.localNames?.arabic?:it.name)+", "+it.country},
                         modifier = Modifier
                             .background(Color.Black)
-                            .fillMaxWidth()
+                            .padding(vertical = 5.dp)
+                            .fillMaxWidth(0.8f)
                             .clickable {
                                 current.value=LocationInfo(it.longitude,it.latitude,it.localNames?.english?:it.name,it.localNames?.arabic?:it.name,it.country,it.country)
                                 markerState.position= LatLng(it.latitude,it.longitude)
@@ -717,7 +727,7 @@ fun HomeMapPage(homeMapViewModel: HomeMapViewModel, saveLocation:(LocationInfo)-
                 }
             }
         },
-        floatingActionButtonPosition = FabPosition.End){innerPadding->
+        floatingActionButtonPosition = FabPosition.Start){innerPadding->
         GoogleMap(
             modifier = Modifier.padding(innerPadding).fillMaxSize(),
             cameraPositionState = cameraPositionState,
@@ -751,6 +761,8 @@ fun HomeMapPage(homeMapViewModel: HomeMapViewModel, saveLocation:(LocationInfo)-
                 placeholder = {
                     Text(stringResource(R.string.search))
                 },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(0.8f)
             )
             LazyColumn(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -760,7 +772,8 @@ fun HomeMapPage(homeMapViewModel: HomeMapViewModel, saveLocation:(LocationInfo)-
                     Text(text=if (Locale.getDefault().language=="en"){(it.localNames?.english?:it.name)+", "+it.country} else{(it.localNames?.arabic?:it.name)+", "+it.country},
                         modifier = Modifier
                             .background(Color.Black)
-                            .fillMaxWidth()
+                            .padding(vertical = 5.dp)
+                            .fillMaxWidth(0.8f)
                             .clickable {
                                 current.value=LocationInfo(it.longitude,it.latitude,it.localNames?.english?:it.name,it.localNames?.arabic?:it.name,it.country,it.country)
                                 markerState.position= LatLng(it.latitude,it.longitude)
@@ -1176,7 +1189,6 @@ fun MapsFloatingActionButton( isClickable:Boolean, onClick:  () -> Unit) {
 fun CustomDateTimePickerDialog(
     onDismiss: () -> Unit,
     onDateTimeSelected: (Long,Long,NotificationType) -> Unit,
-    min: Long = System.currentTimeMillis(),
 ) {
     val calendar = remember { Calendar.getInstance() }
 

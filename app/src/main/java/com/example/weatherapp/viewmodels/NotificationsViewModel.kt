@@ -10,7 +10,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.weatherapp.NotificationReceiver
-import com.example.weatherapp.R
 import com.example.weatherapp.data.models.Notification
 import com.example.weatherapp.data.models.Results
 import com.example.weatherapp.data.repo.WeatherRepository
@@ -47,9 +46,9 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
             try {
                 val number = repository.deleteNotification(notification)
                 if (number == 0) {
-                    mutableMsg.value = context.getString(R.string.not_found)
+                    mutableMsg.value = "no item"
                 }else {
-                    mutableMsg.value= context.getString(R.string.deleted)
+                    mutableMsg.value= "Deleted"
                     withContext(Dispatchers.Main){
                         if (setTime>currentTime){
                             cancelNotification(context,notification)
@@ -58,7 +57,7 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
                 }
             }
             catch (ex:Exception){
-                mutableMsg.value = ex.message?:context.getString(R.string.not_rec)
+                mutableMsg.value = ex.localizedMessage?:"no rec"
             }
         }
     }
@@ -70,33 +69,32 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
             notification.id=0
             viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    if (currentTime < setTime) {
                     val number = repository.insertNotification(notification)
                     if (number.toInt() >= 1) {
-                        mutableMsg.value = context.getString(R.string.added)
+                        mutableMsg.value= "done"
+                        if (currentTime < setTime) {
                         withContext(Dispatchers.Main) {
-                                scheduleEvent(notification = notification, context = context)
+                                scheduleEvent(notification = notification, context = context, id = number.toInt())
                             }
                         }
                     } else {
-                        mutableMsg.value = context.getString(R.string.not_valid)
+                        mutableMsg.value = "not rec"
                     }
                 } catch (ex: Exception) {
-                    mutableMsg.value = ex.localizedMessage ?: context.getString(R.string.not_rec)
+                    mutableMsg.value = ex.localizedMessage?:"no rec"
                 }
 
             }
         }
         else{
-
+            mutableMsg.value = "no item"
         }
     }
 
-    private fun scheduleEvent(context: Context, notification: Notification) {
+    private fun scheduleEvent(context: Context, notification: Notification, id:Int) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val id=(mutableNotifications.value as Results.Success).data?.last()?.id?:0
         val intent = Intent(context, NotificationReceiver::class.java).apply {
-            putExtra("ID", id+1)
+            putExtra("ID", id)
             putExtra("TYPE", notification.type.ordinal)
         }
 

@@ -58,4 +58,5 @@
     <string name="pick_date">Pick a Date</string>
     <string name="pick_time">Pick a Time</string>
     <string name="pick_noti_type">Pick the type of the Notification</string>
+    <string name="no_internet">There is no connection to the internet</string>
 </resources>
