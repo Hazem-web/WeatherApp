@@ -1646,7 +1646,7 @@ fun ForecastDetails(forecast: ForecastWeatherResponse?, degrees: Degrees,isNight
         }
         mutableStateOf(today)
     }
-    if ((forecast?.forecastList?.contains(forecastListState.value?.get(0))?:true)==false){
+    if ((!forecastListState.value.isNullOrEmpty()) &&(forecast?.forecastList?.contains(forecastListState.value?.get(0))?:true)==false){
         forecastListState.value=forecast?.forecastList?.filter {
             it.dt*1000<tomorrow
         }
