@@ -5,13 +5,10 @@
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="ForecastItemPreview">
+      <SelectionState runConfigName="NotificationDaoTest">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="PreviewBorderedRow">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="CustomDateTimePickerDialogPreview">
+      <SelectionState runConfigName="deleteNotification_givenFakeNotifications_returnsListSizeOf0()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

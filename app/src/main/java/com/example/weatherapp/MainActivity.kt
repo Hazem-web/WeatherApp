@@ -33,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -95,6 +96,7 @@ class MainActivity : ComponentActivity() {
     lateinit var degrees: MutableState<Degrees>
     lateinit var language: MutableState<String>
     lateinit var mode: MutableState<String>
+    lateinit var selectedNavigationIndex:MutableIntState
     var exoPlayer:ExoPlayer?=null
     var navigationItems = listOf<BottomNavItem>()
     lateinit var navHostController:NavHostController
@@ -198,7 +200,7 @@ class MainActivity : ComponentActivity() {
                             .background(color = Color.Transparent)
                     ){
                         composable<ScreenRoute.HomeScreen> {
-
+                            selectedNavigationIndex.intValue=0
                             HomePage(
                                 homeViewModel,
                                 degrees = degrees.value,
@@ -208,6 +210,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable<ScreenRoute.PlacesScreen> {
+                            selectedNavigationIndex.intValue=1
                             LocationsPage(locationsViewModel, toDetails = {
                                 navHostController.navigate(ScreenRoute.DetailsScreen(it.lat,it.lon))
                             }) {
@@ -226,6 +229,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable<ScreenRoute.NotificationScreen>{
+                            selectedNavigationIndex.intValue=2
                             NotificationsPage(notificationViewModel)
                         }
                         composable<ScreenRoute.HomeMapScreen>{
@@ -239,6 +243,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable<ScreenRoute.SettingsScreen>{
+                            selectedNavigationIndex.intValue=3
                             SettingsPage(
                                 isNight = isNight.value,
                                 language = language.value,
@@ -430,7 +435,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun NavBar(){
-        val selectedNavigationIndex = rememberSaveable {
+        selectedNavigationIndex = rememberSaveable {
             mutableIntStateOf(0)
         }
         NavigationBar(
@@ -441,7 +446,6 @@ class MainActivity : ComponentActivity() {
                     selected = selectedNavigationIndex.intValue==index,
                     onClick = {
                         if (index!=selectedNavigationIndex.intValue) {
-                            selectedNavigationIndex.intValue = index
                             navHostController.navigate(item.route)
                         }
                         if (selectedNavigationIndex.intValue==0){

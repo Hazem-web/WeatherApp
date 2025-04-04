@@ -277,7 +277,7 @@ fun DetailsPage(
                 is Results.Success->{
                     val data=(weatherState.value as Results.Success<WeatherResponse>).data
                     Row(
-                        horizontalArrangement = Arrangement.Start,
+                        horizontalArrangement = Arrangement.Absolute.Left,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
@@ -419,7 +419,8 @@ fun LocationsPage(locationsViewModel: LocationsViewModel, toDetails:(WeatherDto)
                         .fillMaxSize()
                         .padding(innerPadding)
                         .padding(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(items){
                         PlacesItem(
@@ -533,7 +534,8 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
                         .fillMaxSize()
                         .padding(innerPadding)
                         .padding(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(items){
                         NotificationItem(
@@ -849,10 +851,9 @@ fun SettingsPage(
                 RadioButton(
                     selected = (selectedMode.value == Constants.MAP.value),
                     onClick = {
-                        if (selectedMode.value != Constants.MAP.value){
                             changeMode(Constants.MAP.value)
                             selectedMode.value=Constants.MAP.value
-                        }
+
                     },
                     colors = RadioButtonColors(
                         selectedColor = Color.Magenta,
@@ -1733,21 +1734,27 @@ fun PlacesItem(location: LocationInfo, onClick: () -> Unit, onRemove: () -> Unit
         backgroundContent = {}){
         Row(
             modifier = Modifier
-                .fillMaxWidth(0.95f)
+                .clip(RoundedCornerShape(10.dp))
+                .background(brush = Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary,
+                        Color.White.copy(alpha = 0.4f)
+                    )
+                ))
                 .padding(horizontal = 7.dp, vertical = 10.dp)
-                .background(MaterialTheme.colorScheme.secondary)
-                .clip(RoundedCornerShape(5.dp))
+                .fillMaxWidth()
                 .clickable {
                     onClick()
                 },
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             GlideImage(
                 model = "https://flagsapi.com/"+location.countryCode.uppercase()+"/flat/64",
                 contentDescription = location.country+ stringResource(R.string.flag),
                 modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape),
+                    .clip(RoundedCornerShape(50.dp))
+                    .size(100.dp),
                 contentScale = ContentScale.Crop,
                 loading = placeholder(painter = painterResource(R.drawable.placeholder)),
                 failure = placeholder(painter = painterResource(R.drawable.placeholder))
@@ -1768,7 +1775,8 @@ fun PlacesItem(location: LocationInfo, onClick: () -> Unit, onRemove: () -> Unit
             Icon(
                 painter = painterResource(R.drawable.arrow_forward),
                 contentDescription = stringResource(R.string.details),
-                modifier = Modifier.size(30.dp)
+                modifier = Modifier.size(30.dp),
+                tint = Color.White
             )
         }
     }
@@ -1794,10 +1802,15 @@ fun NotificationItem(notification: Notification, onRemove: () -> Unit){
 
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(brush = Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary,
+                        Color.White.copy(alpha = 0.4f)
+                    )
+                ))
                 .padding(horizontal = 7.dp, vertical = 10.dp)
-                .background(MaterialTheme.colorScheme.secondary)
-                .clip(RoundedCornerShape(5.dp)),
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.Start
         ) {
             Image(

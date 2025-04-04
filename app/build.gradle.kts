@@ -77,6 +77,14 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation (libs.datetime)
-    //noinspection UseTomlInstead
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+    testImplementation(libs.core.ktx)
+    testImplementation(libs.androidx.junit.ktx)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.mock.android)
+    testImplementation(libs.mock.agent)
+    testImplementation(libs.hamcrest.hamcrest)
+    testImplementation(libs.hamcrest.library)
+    testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.androidx.core.testing)
 }
