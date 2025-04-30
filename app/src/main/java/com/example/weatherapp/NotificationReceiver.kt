@@ -64,10 +64,11 @@ class NotificationReceiver : BroadcastReceiver() {
             notificationManager.createNotificationChannel(channel)
         }
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Notification")
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentText("Your scheduled Notification is now!")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setAutoCancel(true)
             .build()
 
         notificationManager.notify(id, notification)

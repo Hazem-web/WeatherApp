@@ -9,7 +9,9 @@ import com.example.weatherapp.data.models.LocationInfo
 import com.example.weatherapp.data.models.Results
 import com.example.weatherapp.data.repo.WeatherRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
@@ -19,8 +21,8 @@ class LocationsViewModel(private val repository: WeatherRepository): ViewModel()
         Results.Loading)
     val locations: StateFlow<Results<List<LocationInfo>>> = mutableLocations
 
-    private val mutableMsg: MutableStateFlow<String> = MutableStateFlow("Loading")
-    val massage:StateFlow<String> = mutableMsg
+    private val mutableMsg: MutableSharedFlow<String> = MutableSharedFlow()
+    val massage:SharedFlow<String> = mutableMsg
 
     fun getLocations(){
         viewModelScope.launch(Dispatchers.IO) {
@@ -38,13 +40,13 @@ class LocationsViewModel(private val repository: WeatherRepository): ViewModel()
                 try {
                     val number = repository.deleteLocation(locationInfo)
                     if (number == 0) {
-                        mutableMsg.value = "no item"
+                        mutableMsg.emit( "no item")
                     }else {
-                        mutableMsg.value= "Deleted"
+                        mutableMsg.emit( "Deleted")
                     }
                 }
                 catch (ex:Exception){
-                    mutableMsg.value = ex.localizedMessage?:"no rec"
+                    mutableMsg.emit(ex.localizedMessage?:"no rec")
                 }
             }
 
@@ -57,14 +59,14 @@ class LocationsViewModel(private val repository: WeatherRepository): ViewModel()
                 try {
                     val number=repository.insertLocation(locationInfo)
                     if (number.toInt() >= 1){
-                        mutableMsg.value= "done"
+                        mutableMsg.emit("done")
                     }
                     else{
-                        mutableMsg.value= "no rec"
+                        mutableMsg.emit( "no rec")
                     }
                 }
                 catch (ex:Exception){
-                    mutableMsg.value= ex.localizedMessage?:"no rec"
+                    mutableMsg.emit(ex.localizedMessage?:"no rec")
                 }
             }
         }

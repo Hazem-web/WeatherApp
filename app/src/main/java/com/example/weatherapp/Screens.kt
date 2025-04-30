@@ -42,6 +42,8 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -321,12 +323,54 @@ fun DetailsPage(
 fun LocationsPage(locationsViewModel: LocationsViewModel, toDetails:(WeatherDto)->Unit, toMaps:()->Unit){
     locationsViewModel.getLocations()
     val locationState=locationsViewModel.locations.collectAsState()
-    val msgState=locationsViewModel.massage.collectAsState()
+    val msgState=locationsViewModel.massage.collectAsState(initial = "Loading")
     val scope = rememberCoroutineScope()
     val snackBarHostState = remember { SnackbarHostState() }
     val unknownError=stringResource(R.string.not_rec)
     val currentRemoved= remember { mutableStateOf<LocationInfo?>(null) }
     val error= stringResource(R.string.error)
+    when(msgState.value){
+        Constants.DELETED.value->{
+            val undo= stringResource(R.string.undo)
+            val string=stringResource(R.string.deleted)
+            scope.launch {
+                val action= snackBarHostState.showSnackbar(string,undo, duration = SnackbarDuration.Short)
+                when(action){
+                    SnackbarResult.ActionPerformed ->{
+                        locationsViewModel.returnLocation(currentRemoved.value)
+                    }
+                    else->{
+
+                    }
+                }
+            }
+        }
+        Constants.DONE.value->{
+            val string=stringResource(R.string.returned)
+            scope.launch {
+                snackBarHostState.showSnackbar(string,)
+            }
+        }
+        Constants.NOT_REC.value->{
+            scope.launch {
+                snackBarHostState.showSnackbar("$error: $unknownError",)
+            }
+        }
+        Constants.NO_ITEM.value->{
+            val string=stringResource(R.string.not_found)
+            scope.launch {
+                snackBarHostState.showSnackbar("$error: $string",)
+            }
+        }
+        Constants.LOADING.value->{
+
+        }
+        else->{
+            scope.launch {
+                snackBarHostState.showSnackbar(msgState.value,)
+            }
+        }
+    }
     Scaffold(
         snackbarHost = { SnackbarHost(snackBarHostState, ){
             Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
@@ -342,48 +386,7 @@ fun LocationsPage(locationsViewModel: LocationsViewModel, toDetails:(WeatherDto)
         },
         floatingActionButtonPosition = FabPosition.End
     ){ innerPadding->
-        when(msgState.value){
-            Constants.DELETED.value->{
-                val undo= stringResource(R.string.undo)
-                val string=stringResource(R.string.deleted)
-                scope.launch {
-                  val action= snackBarHostState.showSnackbar(string,undo,)
-                    when(action){
-                        SnackbarResult.ActionPerformed ->{
-                            locationsViewModel.returnLocation(currentRemoved.value)
-                        }
-                        else->{
 
-                        }
-                    }
-                }
-            }
-            Constants.DONE.value->{
-                val string=stringResource(R.string.returned)
-                scope.launch {
-                    snackBarHostState.showSnackbar(string,)
-                }
-            }
-            Constants.NOT_REC.value->{
-                scope.launch {
-                    snackBarHostState.showSnackbar("$error: $unknownError",)
-                }
-            }
-            Constants.NO_ITEM.value->{
-                val string=stringResource(R.string.not_found)
-                scope.launch {
-                    snackBarHostState.showSnackbar("$error: $string",)
-                }
-            }
-            Constants.LOADING.value->{
-
-            }
-            else->{
-                scope.launch {
-                    snackBarHostState.showSnackbar(msgState.value,)
-                }
-            }
-        }
         when(locationState.value) {
             is Results.Loading -> {
                 Column(
@@ -446,13 +449,55 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
     notificationsViewModel.getNotifications()
     val context= LocalContext.current
     val locationState=notificationsViewModel.notifications.collectAsState()
-    val msgState=notificationsViewModel.massage.collectAsState()
+    val msgState=notificationsViewModel.massage.collectAsState("Loading")
     val scope = rememberCoroutineScope()
     val snackBarHostState = remember { SnackbarHostState() }
     val unknownError=stringResource(R.string.not_rec)
     val currentRemoved= remember { mutableStateOf<Notification?>(null) }
     val error= stringResource(R.string.error)
     var showDialog by remember { mutableStateOf(false) }
+    when(msgState.value){
+        Constants.DELETED.value->{
+            val undo= stringResource(R.string.undo)
+            val string=stringResource(R.string.deleted)
+            scope.launch {
+                val action= snackBarHostState.showSnackbar(string,undo, duration = SnackbarDuration.Short)
+                when(action){
+                    SnackbarResult.ActionPerformed ->{
+                        notificationsViewModel.addNotification(currentRemoved.value,context)
+                    }
+                    else->{
+
+                    }
+                }
+            }
+        }
+        Constants.DONE.value->{
+            val string=stringResource(R.string.returned)
+            scope.launch {
+                snackBarHostState.showSnackbar(string,)
+            }
+        }
+        Constants.NOT_REC.value->{
+            scope.launch {
+                snackBarHostState.showSnackbar("$error: $unknownError",)
+            }
+        }
+        Constants.NO_ITEM.value->{
+            val string=stringResource(R.string.not_found)
+            scope.launch {
+                snackBarHostState.showSnackbar("$error: $string",)
+            }
+        }
+        Constants.LOADING.value->{
+
+        }
+        else->{
+            scope.launch {
+                snackBarHostState.showSnackbar(msgState.value,)
+            }
+        }
+    }
     Scaffold(
         snackbarHost = { SnackbarHost(snackBarHostState, snackbar = {
             Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
@@ -468,48 +513,6 @@ fun NotificationsPage(notificationsViewModel: NotificationsViewModel){
         },
         floatingActionButtonPosition = FabPosition.End
     ){ innerPadding->
-        when(msgState.value){
-            Constants.DELETED.value->{
-                val undo= stringResource(R.string.undo)
-                val string=stringResource(R.string.deleted)
-                scope.launch {
-                    val action= snackBarHostState.showSnackbar(string,undo,)
-                    when(action){
-                        SnackbarResult.ActionPerformed ->{
-                            notificationsViewModel.addNotification(currentRemoved.value,context)
-                        }
-                        else->{
-
-                        }
-                    }
-                }
-            }
-            Constants.DONE.value->{
-                val string=stringResource(R.string.returned)
-                scope.launch {
-                    snackBarHostState.showSnackbar(string,)
-                }
-            }
-            Constants.NOT_REC.value->{
-                scope.launch {
-                    snackBarHostState.showSnackbar("$error: $unknownError",)
-                }
-            }
-            Constants.NO_ITEM.value->{
-                val string=stringResource(R.string.not_found)
-                scope.launch {
-                    snackBarHostState.showSnackbar("$error: $string",)
-                }
-            }
-            Constants.LOADING.value->{
-
-            }
-            else->{
-                scope.launch {
-                    snackBarHostState.showSnackbar(msgState.value,)
-                }
-            }
-        }
         when(locationState.value) {
             is Results.Loading -> {
                 Column(
@@ -598,7 +601,9 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
         snackbarHost = { SnackbarHost(snackBarHostState, snackbar = {
             Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
         }) },
+        containerColor = Color.Transparent,
         modifier = Modifier
+            .padding(0.dp)
             .fillMaxSize(),
         floatingActionButton = {
             MapsFloatingActionButton(
@@ -618,7 +623,7 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
         },
         floatingActionButtonPosition = FabPosition.Start,){innerPadding->
         GoogleMap(
-            modifier = Modifier.padding(innerPadding).fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             onMapClick = {
                 markerState.position=it
@@ -637,7 +642,7 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
         }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(innerPadding).fillMaxWidth(0.9f)
+            modifier = Modifier.padding(innerPadding).fillMaxWidth()
         ) {
             TextField(
                 value = searchText.value,
@@ -652,25 +657,55 @@ fun MapsPage(mapsViewModel: MapsViewModel, returnBack:()->Unit){
                     Text(stringResource(R.string.search))
                 },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(0.8f)
+                modifier = Modifier
+                    .clip(RoundedCornerShape(5.dp))
+                    .fillMaxWidth(0.8f),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = Color.White,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.primary,
                 )
+            )
             LazyColumn(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(locations.value){
-                    Text(text=if (Locale.getDefault().language=="en"){(it.localNames?.english?:it.name)+", "+it.country} else{(it.localNames?.arabic?:it.name)+", "+it.country},
-                        modifier = Modifier
-                            .background(Color.Black)
-                            .padding(vertical = 5.dp)
-                            .fillMaxWidth(0.8f)
-                            .clickable {
-                                current.value=LocationInfo(it.longitude,it.latitude,it.localNames?.english?:it.name,it.localNames?.arabic?:it.name,it.country,it.country)
-                                markerState.position= LatLng(it.latitude,it.longitude)
-                                locations.value= listOf()
-                                searchText.value=""
+                if (searchText.value.isNotBlank()) {
+                    items(locations.value) {
+                        Spacer(
+                            Modifier
+                                .background(color = Color.White)
+                                .height(1.dp)
+                                .fillMaxWidth(0.8f)
+                        )
+                        Text(
+                            text = if (Locale.getDefault().language == "en") {
+                                (it.localNames?.english ?: it.name) + ", " + it.country
+                            } else {
+                                (it.localNames?.arabic ?: it.name) + ", " + it.country
                             },
-                        color = Color.Black)
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primary)
+                                .padding(vertical = 5.dp, horizontal = 6.dp)
+                                .fillMaxWidth(0.8f)
+                                .clickable {
+                                    current.value = LocationInfo(
+                                        it.longitude,
+                                        it.latitude,
+                                        it.localNames?.english ?: it.name,
+                                        it.localNames?.arabic ?: it.name,
+                                        it.country,
+                                        it.country
+                                    )
+                                    markerState.position = LatLng(it.latitude, it.longitude)
+                                    locations.value = listOf()
+                                    searchText.value = ""
+                                    cameraPositionState.position =
+                                        CameraPosition.fromLatLngZoom(markerState.position, 10f)
+                                },
+                            color = Color.Black
+                        )
+                    }
                 }
             }
 
@@ -710,6 +745,7 @@ fun HomeMapPage(homeMapViewModel: HomeMapViewModel, saveLocation:(LocationInfo)-
         snackbarHost = { SnackbarHost(snackBarHostState){
             Snackbar(it, containerColor = MaterialTheme.colorScheme.primary)
         } },
+        containerColor = Color.Transparent,
         modifier = Modifier
             .fillMaxSize(),
         floatingActionButton = {
@@ -729,7 +765,7 @@ fun HomeMapPage(homeMapViewModel: HomeMapViewModel, saveLocation:(LocationInfo)-
         },
         floatingActionButtonPosition = FabPosition.Start){innerPadding->
         GoogleMap(
-            modifier = Modifier.padding(innerPadding).fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             onMapClick = {
                 markerState.position=it
@@ -762,26 +798,55 @@ fun HomeMapPage(homeMapViewModel: HomeMapViewModel, saveLocation:(LocationInfo)-
                     Text(stringResource(R.string.search))
                 },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(0.8f)
+                modifier = Modifier
+                    .clip(RoundedCornerShape(5.dp))
+                    .fillMaxWidth(0.8f),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = Color.White,
+                )
             )
             LazyColumn(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(locations.value){
-                    Text(text=if (Locale.getDefault().language=="en"){(it.localNames?.english?:it.name)+", "+it.country} else{(it.localNames?.arabic?:it.name)+", "+it.country},
-                        modifier = Modifier
-                            .background(Color.Black)
-                            .padding(vertical = 5.dp)
-                            .fillMaxWidth(0.8f)
-                            .clickable {
-                                current.value=LocationInfo(it.longitude,it.latitude,it.localNames?.english?:it.name,it.localNames?.arabic?:it.name,it.country,it.country)
-                                markerState.position= LatLng(it.latitude,it.longitude)
-                                locations.value= listOf()
-                                searchText.value=""
-                                cameraPositionState.position=CameraPosition.fromLatLngZoom(markerState.position, 10f)
+                if (searchText.value.isNotBlank()) {
+                    items(locations.value) {
+                        Spacer(
+                            Modifier
+                                .background(color = Color.White)
+                                .height(1.dp)
+                                .fillMaxWidth(0.8f)
+                        )
+                        Text(
+                            text = if (Locale.getDefault().language == "en") {
+                                (it.localNames?.english ?: it.name) + ", " + it.country
+                            } else {
+                                (it.localNames?.arabic ?: it.name) + ", " + it.country
                             },
-                        color = Color.Black)
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primary)
+                                .padding(vertical = 5.dp, horizontal = 6.dp)
+                                .fillMaxWidth(0.8f)
+                                .clickable {
+                                    current.value = LocationInfo(
+                                        it.longitude,
+                                        it.latitude,
+                                        it.localNames?.english ?: it.name,
+                                        it.localNames?.arabic ?: it.name,
+                                        it.country,
+                                        it.country
+                                    )
+                                    markerState.position = LatLng(it.latitude, it.longitude)
+                                    locations.value = listOf()
+                                    searchText.value = ""
+                                    cameraPositionState.position =
+                                        CameraPosition.fromLatLngZoom(markerState.position, 10f)
+                                },
+                            color = Color.Black
+                        )
+                    }
                 }
             }
 

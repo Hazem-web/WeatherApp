@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.icu.util.Calendar
+import android.net.Uri
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -14,7 +15,9 @@ import com.example.weatherapp.data.models.Notification
 import com.example.weatherapp.data.models.Results
 import com.example.weatherapp.data.repo.WeatherRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
@@ -25,8 +28,8 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
         Results.Loading)
     val notifications: StateFlow<Results<List<Notification>>> = mutableNotifications
 
-    private val mutableMsg: MutableStateFlow<String> = MutableStateFlow("Loading")
-    val massage:StateFlow<String> = mutableMsg
+    private val mutableMsg: MutableSharedFlow<String> = MutableSharedFlow()
+    val massage:SharedFlow<String> = mutableMsg
 
     fun getNotifications(){
         viewModelScope.launch(Dispatchers.IO) {
@@ -46,9 +49,9 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
             try {
                 val number = repository.deleteNotification(notification)
                 if (number == 0) {
-                    mutableMsg.value = "no item"
+                    mutableMsg.emit( "no item")
                 }else {
-                    mutableMsg.value= "Deleted"
+                    mutableMsg.emit( "Deleted")
                     withContext(Dispatchers.Main){
                         if (setTime>currentTime){
                             cancelNotification(context,notification)
@@ -57,7 +60,7 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
                 }
             }
             catch (ex:Exception){
-                mutableMsg.value = ex.localizedMessage?:"no rec"
+                mutableMsg.emit( ex.localizedMessage?:"no rec")
             }
         }
     }
@@ -71,23 +74,26 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
                 try {
                     val number = repository.insertNotification(notification)
                     if (number.toInt() >= 1) {
-                        mutableMsg.value= "done"
+                        mutableMsg.emit( "done")
                         if (currentTime < setTime) {
                         withContext(Dispatchers.Main) {
                                 scheduleEvent(notification = notification, context = context, id = number.toInt())
                             }
                         }
                     } else {
-                        mutableMsg.value = "not rec"
+                        mutableMsg.emit( "not rec")
                     }
                 } catch (ex: Exception) {
-                    mutableMsg.value = ex.localizedMessage?:"no rec"
+                    mutableMsg.emit( ex.localizedMessage?:"no rec")
                 }
 
             }
         }
         else{
-            mutableMsg.value = "no item"
+            viewModelScope.launch {
+                mutableMsg.emit( "no item")
+
+            }
         }
     }
 
@@ -97,10 +103,10 @@ class NotificationsViewModel(private val repository: WeatherRepository): ViewMod
             putExtra("ID", id)
             putExtra("TYPE", notification.type.ordinal)
         }
-
+        intent.data = Uri.parse("custom://notification/$id")
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            1,
+            id,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
